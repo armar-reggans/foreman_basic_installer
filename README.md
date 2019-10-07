@@ -13,6 +13,8 @@ This is an Ansible playbook to install and configure Foreman and Foreman Smart P
     * to install foreman and smart proxy(s): ansible-playbook install.yml
     * to install foreman only: ansible-playbook install-foreman.yml
     * to install add a smart proxy only: ansible-playbook install-foreman.yml
+    
+If you want to enable additional features, edit the group_vars/all.yml file and re-run the playbook.
 
 ## Notes
 The playbook will install a http server to host media. You can use this server for the installation media. When creating installation media, use "media-server" for the hostname. This will use the media server local to the provisioning subnet/isolated network the host is connected to. For instance, in the Path field, use http://media-server:81/media/centos7-1810/
