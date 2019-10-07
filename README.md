@@ -1,9 +1,13 @@
-Installation
-=============
-** 4GB Ram required. Install will fail! **
+This is an Ansible playbook to install and configure Foreman and Foreman Smart Proxies. This playbook was designed to be an easy way to get Foreman/Foreman Proxies installed and configured for provisioning.
 
-- Copy group_vars/all.yml.sample to group_vars/all.yml and edit accordingly
-- Edit ansible.cfg to set inventory
+## Requirements
+- 4GB RAM minimum for Foreman server and proxies
+- FQDN should be used
+- CentOS 7.x (I have only tested on CentOS7, selinux disabled)
+
+## Installation
+
+- Copy group_vars/all.yml.sample to group_vars/all.yml and edit accordingly. The defaults will get a Foreman instance up and running and ready to provision.
 - Edit inventory with correct hostnames
 - Run playbook. For example, to run foreman only, run:  ansible-playbook install-foreman.yml
 

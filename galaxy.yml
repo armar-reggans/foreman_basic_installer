@@ -1,0 +1,18 @@
+namespace: "armar-reggans"
+name: "foreman_basic_installer"
+version: "1.0.0"
+readme: "README.md"
+authors:
+    - "Armar Reggans <armar@reggans.com>"
+dependencies:
+license:
+    - "MIT"
+tags:
+    - foreman
+    - smart proxy
+    - foreman-installer
+    - collection
+repository: "https://github.com/armar-reggans/foreman_basic_installer"
+documentation: "https://github.com/armar-reggans/foreman_basic_installer"
+homepage: "http://www.stninc.com"
+issues: "https://github.com/armar-reggans/foreman_basic_installer/issues"
