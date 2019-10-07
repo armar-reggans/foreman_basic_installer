@@ -1,7 +1,6 @@
 This is an Ansible playbook to install and configure Foreman and Foreman Smart Proxies. This playbook was designed to be an easy way to get Foreman/Foreman Proxies installed and configured for provisioning.
 
 ## Requirements
-- 4GB RAM minimum for Foreman server and proxies
 - FQDN should be used
 - CentOS 7.x (I have only tested on CentOS7, selinux disabled)
 - SSH key from ansible control node should exist on all hosts in the inventory
