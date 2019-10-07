@@ -24,6 +24,6 @@ There is a cron job that runs the script /opt/scripts/sync_media.sh every minute
 
 This playbook will add an entry in the local hosts on the smart proxy called "smart-proxy". This will resolve to the smart proxys' IP address (look at the inventory sample). You will need to update the discovery scripts and change the proxy.url and proxy.type to the following:
 
-     * proxy.url=https://smart-proxy:8443 proxy.type=proxy
+     proxy.url=https://smart-proxy:8443 proxy.type=proxy
 
 This allows the discovered hosts to use the correct proxy.
