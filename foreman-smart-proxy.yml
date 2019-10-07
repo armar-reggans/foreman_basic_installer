@@ -1,0 +1,154 @@
+---
+- hosts: foreman
+  gather_facts: yes
+  tasks:
+    - meta: end_play
+      when: inventory_hostname == "iforeman_host"
+
+    - name: Update Host File
+      lineinfile:
+        path: "/etc/hosts"
+        regexp: "^{{ hostvars[item].ipaddress }}"
+        line: "{{ hostvars[item].ipaddress }} {{ item }}"
+        state: present
+      with_items: "{{ groups['all'] }}"
+
+    - name: Generate Certificate
+      shell: "puppetserver ca generate --certname {{ item }} && echo {{ hostvars[item].ipaddress }}"
+      register: verification
+      failed_when: verification.rc not in [0,1, 24]
+      when: foreman_host != item 
+      args:
+        executable: /bin/bash
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: Create temp dir
+      local_action: file
+      args:
+        path: "/tmp/foremansp/"
+        state: directory
+
+    - name: get ca certificate file
+      fetch:
+        src: "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+        dest: /tmp/foremansp/
+        flat: yes
+
+    - name: get foreman root user public key
+      fetch:
+        src: "/root/.ssh/id_rsa.pub"
+        dest: /tmp/foremansp/
+        flat: yes
+
+    - name: get smart proxy certificate file
+      fetch:
+        src: "/etc/puppetlabs/puppet/ssl/certs/{{ item }}.pem"
+        dest: "/tmp/foremansp/cert-{{ item }}.pem"
+        flat: yes
+      when: foreman_host != item
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: ssh-keyscan smart proxy public key
+      shell: "ssh-keyscan {{ item }} > /tmp/{{ item }}.pub"
+      args:
+        executable: /bin/bash
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: copy smart proxy public keys
+      fetch:
+        src: "/tmp/{{ item }}.pub"
+        dest: "/tmp/foremansp/{{ item }}.pub"
+        flat: yes
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: add smart proxy ssh public keys to known_hosts
+      known_hosts:
+        name: "{{ item }}"
+        key: "{{ lookup('file', '/tmp/foremansp/{{ item }}.pub') }}"
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: get smart proxy private certificate file
+      fetch:
+        src: "/etc/puppetlabs/puppet/ssl/private_keys/{{ item }}.pem"
+        dest: "/tmp/foremansp/private-{{ item }}.pem"
+        flat: yes
+      when: foreman_host != item 
+      with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+    - name: get smart proxy crl certificate file
+      fetch:
+        src: "/etc/puppetlabs/puppet/ssl/crl.pem"
+        dest: "/tmp/foremansp/"
+        flat: yes
+
+- hosts: foreman_smart_proxy
+  gather_facts: yes
+  tasks:
+  - meta: end_play
+    when: inventory_hostname == "iforeman_host"
+
+  - name: Create needed directories
+    file:
+      path: "{{item}}"
+      state: directory
+    with_items:
+      - "/etc/puppetlabs/puppet/ssl/certs/"
+      - "/etc/puppetlabs/puppet/ssl/private_keys/"
+
+  - name: copy ca certificate file
+    copy:
+      src: "/tmp/foremansp/ca.pem"
+      dest: "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
+
+  - name: copy foreman server ssh key 
+    authorized_key:
+      user: root
+      state: present
+      manage_dir: yes
+      key: "{{ lookup('file', '/tmp/foremansp/id_rsa.pub') }}"
+
+  - name: copy smart proxy certificate file
+    copy:
+      dest: "/etc/puppetlabs/puppet/ssl/certs/{{ inventory_hostname }}.pem"
+      src: "/tmp/foremansp/cert-{{ inventory_hostname }}.pem"
+    ignore_errors: true
+
+  - name: copy smart proxy private certificate file
+    copy:
+      dest: "/etc/puppetlabs/puppet/ssl/private_keys/{{ inventory_hostname }}.pem"
+      src: "/tmp/foremansp/private-{{ inventory_hostname }}.pem"
+    ignore_errors: true
+
+  - name: copy smart proxy crl certificate file
+    copy:
+      dest: "/etc/puppetlabs/puppet/ssl/crl.pem"
+      src: "/tmp/foremansp/crl.pem"
+    ignore_errors: true
+
+  - name: Cleanup tmp files
+    local_action: file
+    args:
+      path: "/tmp/foremansp/"
+      state: absent
+
+- hosts: foreman_smart_proxy
+  gather_facts: yes
+  roles:
+    - foreman-smart-proxy
+
+- hosts: foreman
+  gather_facts: yes
+  tasks:
+  - name: Add smart proxy to foreman
+    shell: "hammer proxy create --name={{ item }}  --url=https://{{ item }}:8443"
+    register: verification
+    failed_when: verification.rc not in [0,1,65]
+    args:
+      executable: /bin/bash
+    with_items: "{{ groups['foreman_smart_proxy'] }}"
+
+  - name: Build PXE default
+    shell: "hammer template build-pxe-default"
+    args:
+      executable: /bin/bash
+

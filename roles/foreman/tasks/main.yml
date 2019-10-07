@@ -1,0 +1,226 @@
+---
+- debug:
+    msg: "Installing Foreman"
+
+- name: Update Host File
+  lineinfile:
+    path: "/etc/hosts"
+    regexp: "^{{ hostvars[item].ipaddress }}"
+    line: "{{ hostvars[item].ipaddress }} {{ item }}"
+    state: present
+  with_items: "{{ groups['all'] }}"
+
+- name: Create a 2048-bit SSH key for root user
+  user:
+    name: root
+    generate_ssh_key: yes
+    ssh_key_bits: 2048
+    ssh_key_file: .ssh/id_rsa
+
+- name: Set Hostname
+  shell: "hostnamectl set-hostname {{ inventory_hostname }}"
+  args:
+    executable: /bin/bash
+
+- name: Install puppet repo
+  yum:
+    name: "https://yum.puppetlabs.com/puppet6/puppet6-release-el-7.noarch.rpm"
+    state: present
+    validate_certs: no
+
+- name: Install EPEL repo
+  yum:
+    name: "http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+    validate_certs: no
+
+- name: Install foreman repo
+  yum:
+    name: "https://yum.theforeman.org/releases/{{ foreman_version }}/el7/x86_64/foreman-release.rpm"
+    state: present
+    validate_certs: no
+
+- name: Create /opt/scripts directory
+  file:
+    path: /opt/scripts
+    state: directory
+
+- name: Create /opt/media-library directory
+  file:
+    path: /opt/media-library
+    state: directory
+
+- name: Create /opt/iso diretory
+  file:
+    path: /opt/iso
+    state: directory
+
+- name: Copy sync_media.sh script to foreman server
+  copy:
+    src: sync_media.sh
+    dest: /opt/scripts
+    mode: 0755
+
+- name: Setup cron job for image synchronization to smart proxies
+  cron:
+    name: "Synchronize media to smart proxies"
+    minute: "*"
+    job: "/opt/scripts/sync_media.sh >/dev/null 2>&1"
+ 
+- name: Update Host File
+  lineinfile:
+    path: "/etc/hosts"
+    regexp: "^{{ hostvars[item].ipaddress }}"
+    line: "{{ hostvars[item].ipaddress }} {{ item }}"
+    state: present
+  with_items: "{{ groups['all'] }}"
+
+- name: Update yum cache and install system updates
+  yum: 
+    name: "*"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "CentOS"
+
+- name: Stop firewalld
+  service:
+    name: firewalld
+    state: stopped
+  when: disable_firewall
+
+- name: Disable firewalld
+  service:
+     name: firewalld
+     enabled: no
+  when: disable_firewall
+
+- name: Install foreman-installer 
+  yum:
+    name: foreman-installer
+    state: present
+    validate_certs: no
+
+- name: Install puppet-server
+  yum:
+    name: puppetserver
+    state: present
+    validate_certs: no
+
+- name: Start puppet-server
+  service:
+    name: puppetserver
+    state: started
+    enabled: yes
+
+- name: setup foreman standalone
+  shell: "{{ lookup('template', 'install-foreman.j2') }}"
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman discovery plugin 
+  shell: "foreman-installer --enable-foreman-plugin-discovery --enable-foreman-cli-discovery"
+  when: discovery_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman ansible plugin
+  shell: "foreman-installer --enable-foreman-plugin-ansible --enable-foreman-cli-ansible"
+  when: ansible_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman remote execution plugin
+  shell: "foreman-installer --enable-foreman-plugin-remote-execution --enable-foreman-cli-remote-execution"
+  when: remote_execution_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman openscap plugin
+  shell: "foreman-installer --enable-foreman-plugin-openscap --enable-foreman-cli-openscap"
+  when: openscap_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman hooks plugin
+  shell: "foreman-installer --enable-foreman-plugin-remote-execution --enable-foreman-cli-remote-execution"
+  when: hooks_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman tasks plugin
+  shell: "foreman-installer --enable-foreman-plugin-tasks --enable-foreman-cli-tasks"
+  when: tasks_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman templates plugin
+  shell: "foreman-installer --enable-foreman-plugin-templates --enable-foreman-cli-templates"
+  when: templates_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman expire hosts plugin
+  shell: "foreman-installer --enable-foreman-plugin-expire-hosts"
+  when: expire_hosts_plugin
+  args:
+    executable: /bin/bash
+  
+- name: Enable foreman vmware plugin
+  shell: "foreman-installer --enable-foreman-compute-vmware"
+  when: vmware_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman kubevirt plugin
+  shell: "foreman-installer --enable-foreman-cli-kubevirt --enable-foreman-plugin-kubevirt"
+  when: kubevirt_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman digital ocean plugin
+  shell: "foreman-installer --enable-foreman-plugin-digitalocean"
+  when: digitalocean_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman ec2 plugin
+  shell: "foreman-installer --enable-foreman-compute-ec2"
+  when: ec2_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman gce plugin
+  shell: "foreman-installer --enable-foreman-compute-gce"
+  when: gce_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman libvirt plugin
+  shell: "foreman-installer --enable-foreman-compute-libvirt"
+  when: libvirt_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman openstack plugin
+  shell: "foreman-installer --enable-foreman-compute-openstack"
+  when: openstack_plugin
+  args:
+    executable: /bin/bash
+
+- name: Enable foreman ovirt plugin
+  shell: "foreman-installer --enable-foreman-compute-ovirt"
+  when: ovirt_plugin
+  args:
+    executable: /bin/bash
+  
+- name: Enable foreman rackspace plugin
+  shell: "foreman-installer --enable-foreman-compute-rackspace"
+  when: rackspace_plugin
+  args:
+    executable: /bin/bash
+
+- name: Restart Foreman
+  service:
+    name: httpd
+    state: restarted
+

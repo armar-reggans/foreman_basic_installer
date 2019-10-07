@@ -1,0 +1,25 @@
+foreman-installer \
+--no-enable-foreman \
+--no-enable-foreman-cli \
+--no-enable-foreman-plugin-bootdisk \
+--no-enable-foreman-plugin-setup \
+--enable-puppet \
+--puppet-server-ca=false \
+--puppet-server=true \
+--puppet-server-foreman-url=https://{{ foreman_host }} \
+--enable-foreman-proxy \
+--foreman-proxy-puppetca=false \
+--foreman-proxy-tftp=true \
+--foreman-proxy-tftp-servername={{ ipaddress }} \
+--foreman-proxy-dhcp=true \
+--foreman-proxy-dhcp-interface={{ dhcp_interface }} \
+--foreman-proxy-dhcp-range="{{ dhcp_range }}" \
+--foreman-proxy-dhcp-gateway="{{ dhcp_gateway }}" \
+--foreman-proxy-dhcp-nameservers="{{ dhcp_nameservers }}" \
+--foreman-proxy-foreman-base-url="https://{{ foreman_host }}" \
+--enable-foreman-proxy-plugin-discovery \
+--foreman-proxy-plugin-discovery-source-url=http://downloads.theforeman.org/discovery/releases/latest/ \
+--foreman-proxy-plugin-discovery-install-images=true \
+--foreman-proxy-trusted-hosts={{ foreman_host }} \
+--foreman-proxy-register-in-foreman=false 
+

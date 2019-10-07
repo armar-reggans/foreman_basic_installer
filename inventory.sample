@@ -1,0 +1,7 @@
+[foreman]
+foreman.demo.com ipaddress="192.168.10.31"
+
+[foreman_smart_proxy]
+foreman.demo.com ipaddress="192.168.10.31" dhcp_interface="ens224" dhcp_subnets="10.1.65.0" dhcp_range="10.1.65.11 10.1.65.200" dhcp_gateway="10.1.65.31" dhcp_nameservers="10.1.65.31" media_server="10.1.65.31" dhcp_pxeserver="10.1.65.31"
+foreman-proxy.demo.com ipaddress="192.168.10.32" dhcp_interface="ens224" dhcp_subnets="10.1.66.0"  dhcp_range="10.1.66.50 10.1.66.99" dhcp_gateway="10.1.66.32" dhcp_nameservers="10.1.66.32" media_server="10.1.66.32" dhcp_pxeserver="10.1.66.32"
+foreman-proxy-hq.demo.com ipaddress="10.12.49.11" dhcp_interface="ens192" dhcp_subnets="10.12.52.0" dhcp_range="10.12.52.50 10.12.52.100" dhcp_gateway="10.12.52.11" dhcp_nameservers="10.12.52.11" media_server="10.12.52.11" dhcp_pxeserver="10.12.52.11"

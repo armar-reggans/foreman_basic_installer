@@ -1,0 +1,294 @@
+---
+- debug:
+    msg: "Installing Foreman Smart Proxy on {{ inventory_hostname }}"
+
+- name: Update Host File
+  lineinfile:
+    path: "/etc/hosts"
+    regexp: "^{{ hostvars[item].ipaddress }}"
+    line: "{{ hostvars[item].ipaddress }} {{ item }}"
+    state: present
+  with_items: "{{ groups['all'] }}"
+
+- name: Update Host File - include media server name resolution
+  lineinfile:
+    path: "/etc/hosts"
+    regexp: "^{{ hostvars[item].media_server }} media-server"
+    line: "{{ hostvars[item].media_server }} media-server"
+    state: present
+  with_items: "{{ groups['all'] }}"
+  when: media_server_local_resolution and item == inventory_hostname
+
+- name: Update Host File - include smart-proxy  name resolution
+  lineinfile:
+    path: "/etc/hosts"
+    regexp: "^{{ hostvars[item].media_server }} smart-proxy"
+    line: "{{ hostvars[item].media_server }} smart-proxy"
+    state: present
+  with_items: "{{ groups['all'] }}"
+  when: item == inventory_hostname
+
+- name: Set Hostname
+  shell: "hostnamectl set-hostname {{ inventory_hostname }}"
+  args:
+    executable: /bin/bash
+
+- name: Install puppet repo
+  yum:
+    name: "https://yum.puppetlabs.com/puppet6/puppet6-release-el-7.noarch.rpm"
+    state: present
+    validate_certs: no
+
+- name: Install EPEL repo
+  yum:
+    name: "http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm"
+    state: present
+    validate_certs: no
+
+- name: Install foreman repo
+  yum:
+    name: "https://yum.theforeman.org/releases/{{ foreman_version }}/el7/x86_64/foreman-release.rpm"
+    state: present
+    validate_certs: no
+
+- name: Install SCL repo
+  yum:
+    name: "centos-release-scl"
+    state: present
+    validate_certs: no
+
+- name: Update yum cache and install system updates
+  yum: 
+    name: "*"
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "CentOS"
+
+- name: Stop firewalld
+  service:
+    name: firewalld
+    state: stopped
+  when: disable_firewall
+
+- name: Disable firewalld
+  service:
+     name: firewalld
+     enabled: no
+  when: disable_firewall
+
+- name: Install foreman-installer 
+  yum:
+    name: foreman-installer
+    state: present
+    validate_certs: no
+
+- name: Install dnsmasq
+  yum:
+    name: dnsmasq
+    state: present
+    validate_certs: no
+
+- name: Start and enable dnsmasq
+  service:
+    name: dnsmasq
+    state: started
+    enabled: yes
+
+- name: Install foreman smart proxy
+  shell: >
+        foreman-installer
+        --no-enable-foreman
+        --no-enable-foreman-cli
+        --no-enable-foreman-plugin-bootdisk
+        --no-enable-foreman-plugin-setup
+        --enable-puppet
+        --puppet-server-ca=false
+        --puppet-server=true
+        --puppet-server-foreman-url=https://{{ foreman_host }}
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-puppetca=false
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: inventory_hostname !=  foreman_host
+
+- name: Install foreman smart proxy - Same Host
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-puppetca=false
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: inventory_hostname ==  foreman_host
+
+- name: Install proxy-tftp
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-tftp=true
+        --foreman-proxy-tftp-servername={{ dhcp_pxeserver }}
+        --foreman-proxy-http=true
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_tftp
+
+- name: Install proxy-dhcp
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-dhcp=true
+        --foreman-proxy-dhcp-interface={{ dhcp_interface }}
+        --foreman-proxy-dhcp-range="{{ dhcp_range }}"
+        --foreman-proxy-dhcp-gateway="{{ dhcp_gateway }}"
+        --foreman-proxy-dhcp-pxeserver="{{ dhcp_pxeserver }}"
+        --foreman-proxy-dhcp-nameservers="{{ dhcp_nameservers }}"
+        --foreman-proxy-dhcp-subnets="{{ dhcp_subnets }}"
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_dhcp
+
+- name: Install proxy-discovery
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --enable-foreman-proxy-plugin-discovery
+        --foreman-proxy-plugin-discovery-source-url=http://downloads.theforeman.org/discovery/releases/latest/
+        --foreman-proxy-plugin-discovery-install-images=true
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_discovery
+
+- name: Install proxy-openscap
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --enable-foreman-proxy-plugin-openscap
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_openscap
+
+- name: Install proxy-remote-execution
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --enable-foreman-proxy-plugin-remote-execution-ssh
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_remote_execution
+
+- name: Install proxy-ansible
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --enable-foreman-proxy-plugin-ansible
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false
+  args:
+    executable: /bin/bash
+  when: proxy_ansible
+
+- name: Install proxy-templates
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-templates=true
+        --foreman-proxy-templates-listen-on=both
+        --foreman-proxy-template-url="http://{{ inventory_hostname }}:8000"
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false 
+  args:
+    executable: /bin/bash
+  when: proxy_templates
+
+- name: Install proxy-bmc
+  shell: >
+        foreman-installer
+        --enable-foreman-proxy
+        --foreman-proxy-http=true
+        --foreman-proxy-bmc=true
+        --foreman-proxy-foreman-base-url="https://{{ foreman_host }}"
+        --foreman-proxy-trusted-hosts={{ foreman_host }}
+        --foreman-proxy-register-in-foreman=false
+  args:
+    executable: /bin/bash
+  when: proxy_bmc
+
+- name: Restart Foreman Proxy
+  service:
+    name: foreman-proxy
+    state: restarted
+
+- name: Restart dnsmasq
+  service:
+    name: dnsmasq
+    state: restarted
+
+- name: Fix UEFI discovery. Create EFI directory in tftpboot
+  file:
+    path: /var/lib/tftpboot/EFI/centos/x86_64-efi
+    state: directory
+  when: proxy_tftp
+
+- name: Fix UEFI discovery. Copy regexp.mod.
+  shell: "echo y | cp /usr/lib/grub/x86_64-efi/regexp.mod /var/lib/tftpboot/EFI/centos/x86_64-efi/"
+  args:
+    executable: /bin/bash
+  when: proxy_tftp
+
+- name: Install Web Server for OS images
+  yum:
+    name: "lighttpd"
+    state: present
+    validate_certs: no
+
+- name: Copy lighttpd.conf to smart proxy (listen on port 81)
+  copy:
+    src: lighttpd.conf
+    dest: /etc/lighttpd/lighttpd.conf
+
+- name: Copy dirlisting.conf to smart proxy
+  copy:
+    src: dirlisting.conf
+    dest: /etc/lighttpd/conf.d/dirlisting.conf
+
+- name: Start and enable webserver
+  service:
+    name: lighttpd
+    state: restarted
+    enabled: yes
+
+- name: Create images directory in web root
+  file:
+    path: /var/www/lighttpd/media
+    state: directory

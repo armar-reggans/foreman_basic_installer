@@ -1,0 +1,49 @@
+---
+## Foreman Settings
+foreman_password: "demo.com"
+foreman_url: "https://foreman.demo.com"
+foreman_host: "foreman.demo.com"
+disable_firewall: true
+foreman_organization: Demo
+foreman_location: Demo
+foreman_version: 1.23
+
+####
+## media_server_local_resolution: Setting this option to true will 
+## resolve the name "media-server" to the smart-proxy ip address defined
+## in the inventory. This is useful for isolated networks without
+## internet access. You would use the name "media-server" in your
+## installation media definition, i.e. http://media-server:81/images/centos7-1810
+#### 
+media_server_local_resolution: true
+
+## Enable additional Foreman server functionality 
+ansible_plugin: true
+remote_execution_plugin: true
+discovery_plugin: true
+openscap_plugin: false
+hooks_plugin: true
+tasks_plugin: true
+templates_plugin: true
+expire_hosts_plugin: false
+
+## Provider Support
+ec2_plugin: false
+gce_plugin: false
+libvirt_plugin: false
+openstack_plugin: false
+ovirt_plugin: false
+rackspace_plugin: false
+vmware_plugin: true
+digitalocean_plugin: false
+kubevirt_plugin: false
+
+#Smart Proxy Option
+proxy_bmc: true
+proxy_tftp: true
+proxy_discovery: true
+proxy_dhcp: true
+proxy_ansible: true
+proxy_openscap: false
+proxy_remote_execution: true
+proxy_templates: true
