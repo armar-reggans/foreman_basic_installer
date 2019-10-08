@@ -1,3 +1,5 @@
+**Installs Foreman Release 1.23**
+
 This is an Ansible playbook to install and configure Foreman and Foreman Smart Proxies. This playbook was designed to be an easy way to get Foreman/Foreman Proxies installed and configured for provisioning.
 
 ## Requirements
@@ -8,11 +10,12 @@ This is an Ansible playbook to install and configure Foreman and Foreman Smart P
 ## Installation
 
 - Copy group_vars/all.yml.sample to group_vars/all.yml and edit accordingly. The defaults will get a Foreman instance up and running and ready to provision.
+- Copy inventory.sample to inventory and edit accordingly
 - Edit inventory with correct hostnames
 - Run playbook. For example, 
-    * to install foreman and smart proxy(s): ansible-playbook install.yml
-    * to install foreman only: ansible-playbook install-foreman.yml
-    * to install add a smart proxy only: ansible-playbook install-foreman.yml
+    * to install foreman and smart proxy(s): ansible-playbook -i inventory install.yml
+    * to install foreman only: ansible-playbook -i inventory  install-foreman.yml
+    * to install add a smart proxy only: ansible-playbook -i inventory install-foreman.yml
     
 If you want to enable additional features, edit the group_vars/all.yml file and re-run the playbook.
 
